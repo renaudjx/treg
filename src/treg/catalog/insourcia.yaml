@@ -16,7 +16,10 @@ pricing_url: https://insourcia.io/tarifs/
 #
 # BILLING. The API is sold by subscription plus optional prepaid credits, so there is no fixed USD
 # price per call. Costs below are in QUOTA UNITS, the currency the API itself meters:
-#   - every call costs 1 unit, 4xx answers included (the lookup really happened);
+#   - only a call that looked data up is billed: 2xx, and 404 (the lookup ran). A call that
+#     was rejected (400/422 bad parameter, 403 outside the plan), refused (429) or failed (5xx,
+#     503 `server_busy` included) gives its units back. The per-minute window counts every call;
+#   - a billed call costs 1 unit;
 #   - GET /companies/search is billed per page of 20 rows REQUESTED (`limit`), not rows returned:
 #     limit 1-20 = 1 unit, 21-40 = 2, ..., 100 = 5;
 #   - POST /companies/resolve is billed per record submitted;
@@ -24,8 +27,8 @@ pricing_url: https://insourcia.io/tarifs/
 # SIREN VALIDATION. Every `{siren}` route checks the 9 digits AND the Luhn checksum (La Poste,
 # 356000000, is the one documented exception). A number that fails the checksum answers 400
 # `invalid_siren` before any read; a checksum-valid SIREN with no company answers 404 `not_found`.
-# Both are billed 1 unit.
-# 5xx and 503 `server_busy` are not charged. The meter is readable on every response:
+# The 404 is billed 1 unit, the 400 is free.
+# The meter is readable on every response:
 # `X-RateLimit-Daily-Remaining` (and `X-RateLimit-Monthly-Remaining` on Free), and GET /me returns
 # the credit balance without spending anything.
 #
@@ -384,7 +387,7 @@ endpoints:
         code_naf: {type: string, required: false}
         limit: {type: integer, required: false, note: "default 50, max 200"}
         cursor: {type: string, required: false, note: "pagination cursor, Pro only"}
-      note: "at least one filter is REQUIRED - region, departement, ville or code_naf, or an event filter (date_min, date_max, cedant_siren...). Without one the API answers 400 `missing_prefilter`, still billed 1 unit."
+      note: "at least one filter is REQUIRED - region, departement, ville or code_naf, or an event filter (date_min, date_max, cedant_siren...). Without one the API answers 400 `missing_prefilter`, not billed."
     test_request:
       queryParams: {type: "procedure", date_min: "2026-09-01", limit: 1}
     cost:
